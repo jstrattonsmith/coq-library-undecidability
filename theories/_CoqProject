@@ -327,6 +327,9 @@ MinskyMachines/ndMM2_undec.v
 MinskyMachines/Util/MM_sss.v
 MinskyMachines/Util/MM_computable.v
 MinskyMachines/Util/MM2_facts.v
+MinskyMachines/Util/MM2_stepper.v
+MinskyMachines/Util/MM2_embed_nat.v
+MinskyMachines/Util/MM2_simulator.v
 MinskyMachines/Util/MMA_facts.v
 MinskyMachines/Util/MMA_pairing.v
 MinskyMachines/Util/MMA_computable.v
