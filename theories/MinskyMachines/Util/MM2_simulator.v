@@ -19,10 +19,6 @@ From Undecidability.MinskyMachines Require Import MM2.
 From Undecidability.MinskyMachines.Util Require Import MM2_facts MM2_stepper MM2_embed_nat.
 Import MM2Notations.
 
-Set Implicit Arguments.
-Unset Strict Implicit.
-Unset Printing Implicit Defensive.
-
 (* --- 0. nat <-> list mm2_instr, via a hand-rolled embed-based encoding -- *)
 
 Definition instr_to_nat (i : mm2_instr) : nat :=
