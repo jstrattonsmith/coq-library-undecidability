@@ -46,6 +46,9 @@ From Undecidability.MinskyMachines.Reductions Require Import
   FRACTRAN_computable_to_MM2_computable MMA2_to_MM2.
 From Undecidability.MinskyMachines.Util Require Import MM2_stepper MM2_embed_nat MM2_simulator.
 
+Lemma mma_mm2_state_22 (i x y : nat) : mma_mm2_state (i, x ## y ## vec_nil) = (i, (x, y)).
+Proof. reflexivity. Qed.
+
 Lemma FRACTRAN_computable_to_MMA2_pinned {k} (R : Vector.t nat k -> nat -> Prop) :
   FRACTRAN_computable R ->
   exists (Q : list (nat * nat)),
