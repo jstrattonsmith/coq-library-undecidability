@@ -132,3 +132,163 @@ Lemma mm2_stop_of_step_fun_none P s :
 Proof.
 intros H s' Hstep. apply mm2_step_fun_spec in Hstep. congruence.
 Qed.
+
+(* --- mm2_outcome_at: a total, option-valued observation of the simulator
+   at a given step count (Some 1 if halted-at-(0,(0,0)), Some 0 if halted
+   elsewhere, None if not yet halted) -- pure MM2 content, no synthetic-
+   computability dependency of its own (it's only ever *used* to build a
+   Church's-Thesis witness downstream, in the consuming project's own
+   MM2/Simulator.v, but the function itself doesn't need that machinery). *)
+
+Definition mm2_outcome_at (c y n : nat) : option nat :=
+  if mm2_haltedAt (progOf c) n (1,(y,0))
+  then Some (if mm2_state_eqb (mm2_iter (progOf c) n (1,(y,0))) (0,(0,0)) then 1 else 0)
+  else None.
+
+(* --- L-extractability: every function above is built entirely from plain
+   structurally-recursive Gallina functions -- no opaque parts -- so each
+   extracts to an actual L-term via Undecidability.L's own `extract`
+   tactic. This needs nothing beyond this library's own L/ framework;
+   deliberately kept in one file with the functions
+   themselves rather than split by a downstream consumer, since `extract`
+   turned out not to reliably bridge a computable instance for a function
+   used inside another function's body across a file boundary (confirmed
+   empirically: instances registered via `computableExt` in one file
+   weren't picked up by `extract` processing a caller in another file that
+   Requires it, even though the same proof scripts work fine when
+   colocated).
+
+   Gotcha, confirmed by direct probing: `Require Import Undecidability.L.L.`
+   (the convenience mega-import) breaks `extract` for several of the
+   lemmas below with an opaque "could not simplify some occuring term,
+   shelved instead" failure -- apparently via some notation/instance
+   collision, not anything about these specific functions. Fix: import the
+   same *targeted* set of L.Datatypes files needed, never the mega
+   import. *)
+
+From Undecidability.L Require Import Datatypes.List.List_in.
+From Undecidability.L Require Import Datatypes.List.List_basics.
+From Undecidability.L Require Import Datatypes.List.List_extra.
+From Undecidability.L Require Import Datatypes.LProd.
+From Undecidability.L Require Import Datatypes.LTerm.
+From Undecidability.L Require Import Functions.Eval.
+From Undecidability.L Require Import Tactics.GenEncode.
+
+MetaRocq Run (tmGenEncode "mm2_instr_enc" mm2_instr).
+Hint Resolve mm2_instr_enc_correct : Lrewrite.
+
+Instance term_mm2_inc_a : computable mm2_inc_a.
+Proof. extract constructor. Qed.
+Instance term_mm2_inc_b : computable mm2_inc_b.
+Proof. extract constructor. Qed.
+Instance term_mm2_dec_a : computable mm2_dec_a.
+Proof. extract constructor. Qed.
+Instance term_mm2_dec_b : computable mm2_dec_b.
+Proof. extract constructor. Qed.
+
+(* Registering constructors above pulls in enough for the rest -- only now
+   is it safe to bring in the remaining Datatypes/List instances needed
+   below (nth_error, option, bool), per the ordering gotcha noted above. *)
+From Undecidability.L Require Import Datatypes.List.List_nat.
+From Undecidability.L Require Import Datatypes.LOptions.
+From Undecidability.L Require Import Datatypes.LBool.
+
+Instance mm2_atom_fun_computable : computable mm2_atom_fun.
+Proof. extract. Qed.
+
+Instance mm2_step_fun_computable : computable mm2_step_fun.
+Proof. extract. Qed.
+
+(* embed/unembed's computable instances: reproduced from
+   SyntheticComputability.Models.CT's own proofs (this library has no
+   SyntheticComputability dependency, and importing that file wholesale
+   would introduce one just for this) -- these two don't actually depend
+   on any of that file's *other* content. *)
+
+Fixpoint nat_sum n : nat :=
+  match n with
+  | 0 => 0
+  | S n' => S n' + nat_sum n'
+  end.
+
+Definition embed' '(x, y) : nat := y + nat_sum (y + x).
+
+Instance nat_sum_computable : computable nat_sum.
+Proof. extract. Qed.
+
+Instance embed_computable : computable embed.
+Proof. change (computable embed'). extract. Qed.
+
+Definition unembed'' := (fix F (k : nat) :=
+  match k with
+  | 0 => (0,0)
+  | S n => match fst (F n) with 0 => (S (snd (F n)), 0) | S x => (x, S (snd (F n))) end
+  end).
+
+Instance unembed_computable : computable unembed.
+Proof.
+eapply computableExt with (x := unembed''). 2:extract.
+intros n. cbn. induction n; cbn.
+- reflexivity.
+- fold (unembed n). rewrite IHn. now destruct (unembed n).
+Qed.
+
+Instance instr_to_nat_computable : computable instr_to_nat.
+Proof. extract. Qed.
+
+Instance nat_to_instr_computable : computable nat_to_instr.
+Proof. extract. Qed.
+
+Instance list_to_nat_computable : computable list_to_nat.
+Proof. extract. Qed.
+
+Instance nat_to_list_computable : computable nat_to_list.
+Proof. extract. Qed.
+
+Instance progOf_computable : computable progOf.
+Proof. extract. Qed.
+
+Instance codeOf_computable : computable codeOf.
+Proof. extract. Qed.
+
+Instance mm2_step_total_computable : computable mm2_step_total.
+Proof. extract. Qed.
+
+(* mm2_iter recurses on its *middle* argument (Nat.iter n (mm2_step_total P)
+   s0) -- extract's automatic recursive-argument detection wants the
+   decreasing argument first, and Nat.iter itself has no registered
+   computable instance to fall back on. Fix: give a directly-Fixpoint,
+   n-first shadow definition (which extracts cleanly), then transfer
+   computability to mm2_iter itself via computableExt plus an extensional
+   equality proof (same idiom as unembed/unembed'' above). *)
+Fixpoint mm2_iter_fix (n : nat) (P : list mm2_instr) (s0 : mm2_state) : mm2_state :=
+  match n with
+  | 0 => s0
+  | S n' => mm2_step_total P (mm2_iter_fix n' P s0)
+  end.
+
+Instance mm2_iter_fix_computable : computable mm2_iter_fix.
+Proof. extract. Qed.
+
+Lemma mm2_iter_fix_spec P n s0 : mm2_iter_fix n P s0 = mm2_iter P n s0.
+Proof.
+induction n as [| n IH] in s0 |- *.
+- reflexivity.
+- rewrite mm2_iter_S. cbn [mm2_iter_fix]. now rewrite IH.
+Qed.
+
+Instance mm2_iter_computable : computable mm2_iter.
+Proof.
+eapply computableExt with (x := fun P n s0 => mm2_iter_fix n P s0).
+2: extract.
+intros P n s0. apply mm2_iter_fix_spec.
+Qed.
+
+Instance mm2_haltedAt_computable : computable mm2_haltedAt.
+Proof. extract. Qed.
+
+Instance mm2_state_eqb_computable : computable mm2_state_eqb.
+Proof. extract. Qed.
+
+Instance mm2_outcome_at_computable : computable mm2_outcome_at.
+Proof. extract. Qed.
