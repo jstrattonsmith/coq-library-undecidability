@@ -155,6 +155,18 @@ The library is compatible with Coq's compiled interfaces ([`vos`](https://coq.in
 - `make vos` builds compiled interfaces for the library
 - `make vok` checks correctness of the library 
 
+### Nix (this branch)
+
+This branch (`enable-L-nix-9.0`) also ships a `flake.nix` on top of an
+otherwise-unmodified `rocq-9.0`, enabling the `L/` extraction framework (and,
+as of 2026-08-31, some new MM2/two-counter-machine content -- see
+`CKA_CONTRIBUTIONS.md` for what and why):
+
+```sh
+nix develop   # enter dev shell
+nix build     # build/typecheck the library, L/ included
+```
+
 ### Troubleshooting
 
 #### Coq version
