@@ -148,23 +148,18 @@ Definition mm2_outcome_at (c y n : nat) : option nat :=
 (* --- L-extractability: every function above is built entirely from plain
    structurally-recursive Gallina functions -- no opaque parts -- so each
    extracts to an actual L-term via Undecidability.L's own `extract`
-   tactic. This needs nothing beyond this library's own L/ framework;
-   deliberately kept in one file with the functions
-   themselves rather than split by a downstream consumer, since `extract`
-   turned out not to reliably bridge a computable instance for a function
-   used inside another function's body across a file boundary (confirmed
-   empirically: instances registered via `computableExt` in one file
-   weren't picked up by `extract` processing a caller in another file that
-   Requires it, even though the same proof scripts work fine when
-   colocated).
+   tactic. This needs nothing beyond this library's own L/ framework.
+   Kept in one file with the functions themselves: a `computableExt`-
+   registered instance for a function used inside another function's body
+   does not reliably bridge across a file boundary for `extract`, even
+   though the same proof scripts work fine when colocated.
 
-   Gotcha, confirmed by direct probing: `Require Import Undecidability.L.L.`
-   (the convenience mega-import) breaks `extract` for several of the
-   lemmas below with an opaque "could not simplify some occuring term,
-   shelved instead" failure -- apparently via some notation/instance
-   collision, not anything about these specific functions. Fix: import the
-   same *targeted* set of L.Datatypes files needed, never the mega
-   import. *)
+   `Require Import Undecidability.L.L.` (the convenience mega-import)
+   breaks `extract` for several of the lemmas below, with an opaque
+   "could not simplify some occuring term, shelved instead" failure,
+   apparently via a notation/instance collision unrelated to these
+   specific functions -- import the targeted set of L.Datatypes files
+   needed instead. *)
 
 From Undecidability.L Require Import Datatypes.List.List_in.
 From Undecidability.L Require Import Datatypes.List.List_basics.
