@@ -19,3 +19,4 @@ theories/.vscode
 *.#*
 result
 /.direnv/
+/.envrc
